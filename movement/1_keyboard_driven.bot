@@ -1,0 +1,47 @@
+# Use cursor keys to move arrow
+# space is a 'break', return resets
+
+from planar.py import Vec2, Affine
+
+def setup():
+    global pos, angle, velocity
+    speed(60)
+    size(800, 600)
+    pos = Vec2(WIDTH / 2, HEIGHT / 2)
+    velocity = 0.0
+    angle = 0
+
+def draw():
+    global pos, angle, velocity
+    transform(mode=CENTER)
+    if keydown:
+        if keycode == KEY_UP:
+            velocity += 0.2
+        elif keycode == KEY_DOWN:
+            velocity -= 0.2
+        elif keycode == KEY_LEFT:
+            angle -= 5
+        elif keycode == KEY_RIGHT:
+            angle += 5
+        elif keycode == KEY_SPACE:
+            velocity *= 0.9
+        elif keycode == KEY_RETURN:
+            pos = Vec2(WIDTH / 2, HEIGHT / 2)
+            velocity = 0.0
+            angle = 0
+    else:
+        velocity *= 0.99
+    
+    angle = angle % 360
+    pos += Vec2.polar(angle = angle, length = velocity)
+    
+    if pos.x < 10 or pos.x > WIDTH:
+        angle = 180 - angle
+    if pos.y < 10 or pos.y > HEIGHT - 10:
+        angle = - angle
+
+    translate(pos.x, pos.y)
+    rotate(-angle) # nodebox1/shoebot rotation is anticlockwise
+
+    arrow(40, 40, 80, fill=(0, 0, 1, 0.2))
+

@@ -1,0 +1,144 @@
+#
+# (Very) Simple particle system implementation in shoebot
+#
+# to run, install shoebot and planar.py, then run
+#
+# sbot -w arrow_particles.bot
+
+from random import random
+
+from planar.py import Vec2, Affine
+from collections import namedtuple
+
+
+class Moveable(object):
+    """
+    Moveable object.
+
+    Controller functions manage the movement and are called on 'update'
+    """
+    def __init__(self, pos = None, velocity = None, angle = None, controller = None, controllers = None, draw_func = None):
+        self.pos = pos or Vec2(WIDTH / 2, HEIGHT / 2)
+        self.velocity = velocity or 0.0
+        self.angle = angle or 0
+        self.draw_func = draw_func
+        if controller:
+            self.controllers = [ controller ]
+        else:
+            self.controllers = []
+        if controllers:
+            self.controllers.extend(controllers)
+
+    def update(self):
+        """
+        Call all the controllers to update coordinates.
+        
+        Angles are always wrapped to 360 degrees.
+        """
+        pos, angle, velocity = self.pos, self.angle, self.velocity
+        for controller in self.controllers:
+            pos, angle, velocity = controller(pos, angle % 360, velocity)
+        self.pos, self.angle, self.velocity = pos, angle % 360, velocity
+        self.pos += Vec2.polar(angle = angle, length = velocity)
+
+    def draw(self):
+        push()
+        translate(self.pos.x, self.pos.y)
+        rotate(-self.angle) # nodebox1/shoebot rotation is anticlockwise
+        self.draw_func()
+        pop()
+
+
+
+class Particle(Moveable):
+    def __init__(self, hp = 250, **kwargs):
+        Moveable.__init__(self, draw_func = self.draw_func, **kwargs)
+        self.hp = hp
+
+    def update(self):
+        super(Particle, self).update()
+        self.hp -=1
+        return self.hp > 0
+
+    def draw_func(self):
+        a = 1.0
+        if 0 < self.hp < 250:
+           a = self.hp / 250.0
+        arrow(0, 0, 80, fill=(1, 0, 0, a))
+
+
+
+def key_controller(pos, angle, velocity):
+    if keydown:
+        if keycode == KEY_UP:
+            velocity += 0.2
+        elif keycode == KEY_DOWN:
+            velocity -= 0.2
+        elif keycode == KEY_LEFT:
+            angle -= 5
+        elif keycode == KEY_RIGHT:
+            angle += 5
+        elif keycode == KEY_SPACE:
+            velocity *= 0.9
+        elif keycode == KEY_RETURN:
+            pos = Vec2(WIDTH / 2, HEIGHT / 2)
+            velocity = 0.0
+            angle = 0
+    return pos, angle, velocity
+
+
+def inertia_controller(pos, angle, velocity):
+    return pos, angle, velocity * 0.99
+
+
+def bounds_controller(pos, angle, velocity):
+    if pos.x < 10 or pos.x > WIDTH:
+        angle = 180 - angle
+    if pos.y < 10 or pos.y > HEIGHT - 10:
+        angle = - angle
+    return pos, angle, velocity
+
+
+
+def random_emitter(particles):
+    if random() > 0.1:
+        p = Particle(
+            velocity = random() * 2.0,
+            angle = random() * 360,
+            controller = inertia_controller)
+        particles.append(p)
+
+
+def update_particles(particles):
+    '''
+    Update particles
+    
+    return: list of particles to update
+    '''
+    part = []
+    for p in particles:
+        if p.update():
+            part.append(p)
+    return part
+
+
+
+def setup():
+    global particles
+    speed(60)
+    size(800, 600)
+    transform(mode=CENTER)
+
+    particles = []
+    
+
+def draw():
+    global particles
+
+    random_emitter(particles)
+    particles = update_particles(particles)
+
+    for p in particles:
+        p.draw()
+
+

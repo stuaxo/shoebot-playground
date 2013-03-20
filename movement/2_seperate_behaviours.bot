@@ -1,0 +1,116 @@
+# In this version of the file the concept of a controller is introduced.
+#
+# A controller takes the position, angle and velocity of the thing to be moved
+# and returns a new position, angle and velocity.
+#
+# The machinery to manage this is wrapper up in the Movable class
+
+from planar.py import Vec2, Affine
+from collections import namedtuple
+
+
+class Moveable(object):
+    """
+    Moveable object.
+
+    Controller functions manage the movement and are called on 'update'
+    """
+    def __init__(self, pos = None, velocity = None, angle = None, controller = None, controllers = None, draw_func = None):
+        self.pos = pos or Vec2(WIDTH / 2, HEIGHT / 2)
+        self.velocity = velocity or 0.0
+        self.angle = angle or 0
+        self.draw_func = draw_func
+        if controller:
+            self.controllers = [ controller ]
+        else:
+            self.controllers = []
+        if controllers:
+            self.controllers.extend(controllers)
+
+    def update(self):
+        """
+        Call all the controllers to update coordinates.
+        
+        Angles are always wrapped to 360 degrees.
+        """
+        pos, angle, velocity = self.pos, self.angle, self.velocity
+        for controller in self.controllers:
+            pos, angle, velocity = controller(pos, angle % 360, velocity)
+        self.pos, self.angle, self.velocity = pos, angle % 360, velocity
+        self.pos += Vec2.polar(angle = angle, length = velocity)
+
+    def draw(self):
+        push()
+        translate(self.pos.x, self.pos.y)
+        rotate(-self.angle) # nodebox1/shoebot rotation is anticlockwise
+        self.draw_func()
+        pop()
+
+
+
+def key_controller(pos, angle, velocity):
+    if keydown:
+        if keycode == KEY_UP:
+            velocity += 0.2
+        elif keycode == KEY_DOWN:
+            velocity -= 0.2
+        elif keycode == KEY_LEFT:
+            angle -= 5
+        elif keycode == KEY_RIGHT:
+            angle += 5
+        elif keycode == KEY_SPACE:
+            velocity *= 0.9
+        elif keycode == KEY_RETURN:
+            pos = Vec2(WIDTH / 2, HEIGHT / 2)
+            velocity = 0.0
+            angle = 0
+    return pos, angle, velocity
+
+
+def inertia_controller(pos, angle, velocity):
+    return pos, angle, velocity * 0.99
+
+
+def bounds_controller(pos, angle, velocity):
+    if pos.x < 10 or pos.x > WIDTH:
+        angle = 180 - angle
+    if pos.y < 10 or pos.y > HEIGHT - 10:
+        angle = - angle
+    return pos, angle, velocity
+
+
+
+
+def draw_arrow(fill=None):
+    def do_draw():
+        arrow(40, 40, 80, fill=fill)
+    return do_draw
+
+
+def setup():
+    global auto_arrow, driven_arrow
+    speed(60)
+    size(800, 600)
+    transform(mode=CENTER)
+    driven_arrow = Moveable(
+        controllers = [key_controller, bounds_controller, inertia_controller], 
+        draw_func = draw_arrow(fill=(0, 0, 1, 0.2)))
+
+    auto_arrow = Moveable(
+        velocity = 5.0,
+        angle = 45,
+        controller = bounds_controller,
+        draw_func = draw_arrow(fill=(1, 0, 0, 0.2)))
+
+
+def draw():
+    global auto_arrow, driven_arrow
+
+    driven_arrow.update()
+    auto_arrow.update()
+
+    driven_arrow.draw()
+    auto_arrow.draw()
+
+
+
