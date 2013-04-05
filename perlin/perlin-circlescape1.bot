@@ -1,0 +1,50 @@
+'''
+Draw circles based on a perlin landscape - move around the
+landscape using the mouse (centering the mouse means no
+movement).
+
+The higher the point in the perlin landscape the lighter
+the colour and the larger the circle.
+'''
+
+from random import randint
+import noise
+
+size(1000,1000)
+speed(60)
+
+colormode(HSB)
+
+def setup():
+    global origx, origy
+    origx = 0
+    origy = 0    
+
+rows = 8
+cols = 9
+gap = 100
+
+def draw():
+    global origx, origy, gap
+
+    # black background
+    background(0)
+
+    # start from 100,100
+    translate(100,100)
+    # and draw the blocks
+    mx = float(1.0 / WIDTH) * (-MOUSEX - (-WIDTH / 2))
+    my = float(1.0 / HEIGHT) * (-MOUSEY - (-HEIGHT / 2))
+    
+    origx += (mx / 8.0)
+    origy += (my / 8.0)
+    for gx,gy in grid(rows,cols,1,1):
+        # height of each block is determined by x,y coordinates
+        n = (noise.pnoise2(float(origx + (gx / 10.0)), float(origy + (gy / 10.0)), 2) / cols)
+        diam = 50 + (n * 600.0)
+        s = (n * 10.0)
+        fill(0.1, 1.0 - s, 1)
+        x = gx * gap
+        y = gy * gap
+        oval(x - diam / 2, y - diam / 2, diam, diam)
+
